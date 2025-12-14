@@ -6,7 +6,6 @@ CR60_LABEL="AUDIO"
 CR60_MOUNT="/mnt/cr60"
 DATA_MOUNT="/mnt/data"
 MUSIC_ROOT="${DATA_MOUNT}/music"
-PING_HOST="8.8.8.8"
 
 ### 1) Check for AUDIO-labeled device ###
 echo "Checking for CR60 (label=${CR60_LABEL})..."
@@ -25,12 +24,16 @@ fi
 
 echo "Found CR60 device at ${CR60_DEV}"
 
-### 2) Wait for internet ###
-echo "Waiting for internet connectivity..."
-until ping -c1 -W1 "${PING_HOST}" >/dev/null 2>&1; do
-  sleep 2
+### 2) Wait for MusicBrainz connectivity ###
+MB_URL="https://musicbrainz.org/ws/2/release/?query=barcode:0000000000000&limit=1"
+
+echo "Waiting for MusicBrainz metadata service..."
+
+until curl -fs --max-time 5 "${MB_URL}" >/dev/null 2>&1; do
+  sleep 3
 done
-echo "Internet available."
+
+echo "MusicBrainz reachable."
 
 ### 3) Mount CR60 (non-persistent) ###
 sudo mkdir -p "${CR60_MOUNT}"
