@@ -10,7 +10,7 @@ MUSIC_ROOT="${DATA_MOUNT}/music"
 ### 1) Check for AUDIO-labeled device ###
 echo "Checking for CR60 (label=${CR60_LABEL})..."
 
-CR60_DEV=$(lsblk -f -o NAME,LABEL | awk '$2=="'"${CR60_LABEL}"'" {print "/dev/"$1; exit}')
+CR60_DEV=$(lsblk -rno NAME,LABEL | awk '$2=="'"${CR60_LABEL}"'" {print "/dev/"$1; exit}')
 
 if [[ -z "${CR60_DEV}" ]]; then
   echo "No device with label '${CR60_LABEL}' found. Exiting."
