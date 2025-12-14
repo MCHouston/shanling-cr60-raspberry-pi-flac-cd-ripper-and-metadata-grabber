@@ -6,12 +6,13 @@ Install these once:
 
 sudo apt update
 sudo apt install -y \
+  curl \
+  uuid-runtime \
   flac \
+  
   musicbrainz-picard \
   eyeD3 \
-  uuid-runtime \
   exfat-fuse exfatprogs \
-  curl \
   util-linux
 
 

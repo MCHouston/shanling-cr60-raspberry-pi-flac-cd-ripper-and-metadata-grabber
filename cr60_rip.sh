@@ -10,7 +10,8 @@ MUSIC_ROOT="${DATA_MOUNT}/music"
 ### 1) Check for AUDIO-labeled device ###
 echo "Checking for CR60 (label=${CR60_LABEL})..."
 
-CR60_DEV=$(lsblk -rno NAME,LABEL | awk '$2=="'"${CR60_LABEL}"'" {print "/dev/"$1; exit}')
+# Get the partition path for the connected drive(s)
+CR60_DEV=$(lsblk -rpno NAME,LABEL,TYPE | awk '$2=="'"${CR60_LABEL}"'" && $3=="part" {print $1; exit}')
 
 if [[ -z "${CR60_DEV}" ]]; then
   echo "No device with label '${CR60_LABEL}' found. Exiting."
@@ -43,7 +44,11 @@ if ! mountpoint -q "${CR60_MOUNT}"; then
 fi
 
 ### 4) Check for WAV files ###
+
+# Ensure .wav files are discovered regardless of file type casing
 shopt -s nullglob nocaseglob
+
+# Get list of WAV files
 WAV_FILES=("${CR60_MOUNT}"/*.wav)
 
 if [[ ${#WAV_FILES[@]} -eq 0 ]]; then
@@ -68,7 +73,9 @@ for wav in "${WAV_FILES[@]}"; do
   base=$(basename "${wav}")
   out="${WORKDIR}/${base%.*}.flac"
 
-  flac --best --verify \
+  # Use flac library to handle conversion. Use max compression, and verify output.
+  flac --best \
+       --verify \
        --preserve-modtime \
        -o "${out}" "${wav}"
 done
