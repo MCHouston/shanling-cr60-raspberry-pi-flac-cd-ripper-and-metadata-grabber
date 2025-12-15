@@ -94,7 +94,13 @@ done
 ### 6) Tagging + artwork via MusicBrainz Picard ###
 echo "Tagging files via MusicBrainz Picard..."
 
-picard \
+# picard \
+#   --no-browser \
+#   --auto-save \
+#   --quiet \
+#   "${WORKDIR}"
+
+/opt/picard-tools/bin/picard-tools \
   --no-browser \
   --auto-save \
   --quiet \
