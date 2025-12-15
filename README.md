@@ -6,20 +6,19 @@ Assumptions / prerequisites
 
 ## APT Packages
 
-### Install snapd
-sudo apt update
-sudo apt install -y snapd
-//sudo systemctl enable --now snapd.socket //Lkely Not needed
-//sudo ln -s /var/lib/snapd/snap /snap // Likely not needed
-sudo reboot
-
 ### Install APT packages
 sudo apt update
 sudo apt install -y \
-  snapd \
   curl \
   uuid-runtime \
   flac \
+  python3 \
+  python3-pip \
+  python3-venv \
+  python3-acoustid \
+  beets \
+  imagemagick \
+  libchromaprint-tools
   
 
 
@@ -33,15 +32,6 @@ sudo apt install -y \
   exfat-fuse exfatprogs \
   util-linux
 
-
-### Install Picard from Snapcraft, and ensure it has access to removable media (persists)
-sudo snap install core
-sudo snap install picard
-snap connect picard:removable-media
-
-
-# Running the script
-Picard will be used in CLI mode for tagging & artwork.
 
 The Bash script
 

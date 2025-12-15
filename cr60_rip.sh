@@ -5,7 +5,7 @@ set -euo pipefail
 CR60_LABEL="AUDIO"
 CR60_MOUNT="/mnt/cr60"
 DATA_MOUNT="/mnt/data"
-MUSIC_ROOT="${DATA_MOUNT}/music"
+MUSIC_ROOT="${DATA_MOUNT}/Music"
 
 ### 1) Check for AUDIO-labeled device ###
 echo "Checking for CR60 (label=${CR60_LABEL})..."
@@ -92,19 +92,15 @@ for wav in "${WAV_FILES[@]}"; do
 done
 
 ### 6) Tagging + artwork via MusicBrainz Picard ###
-echo "Tagging files via MusicBrainz Picard..."
+echo "Tagging files via MusicBrainz Beets..."
+
+beet import -q -A "${WORKDIR}"
 
 # picard \
 #   --no-browser \
 #   --auto-save \
 #   --quiet \
 #   "${WORKDIR}"
-
-/opt/picard-cli/bin/picard \
-  --no-browser \
-  --auto-save \
-  --quiet \
-  "${WORKDIR}"
 
 ### 7) Determine artist & album ###
 ARTIST=$(metaflac --show-tag=ARTIST "${WORKDIR}"/*.flac | head -n1 | cut -d= -f2-)
