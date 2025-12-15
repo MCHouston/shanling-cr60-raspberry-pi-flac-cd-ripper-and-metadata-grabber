@@ -28,6 +28,11 @@ if [[ ! -f "${BEETS_CFG}" ]]; then
 directory: /mnt/data/Music
 library: ~/.config/beets/library.db
 
+match:
+  strong_rec_thresh: 0.90
+  medium_rec_thresh: 0.90
+  rec_gap_thresh: 1.0
+
 import:
   move: yes
   write: yes
@@ -37,6 +42,7 @@ import:
   resume: no
   quiet: yes
   from_scratch: yes
+  default_action: apply
 
 plugins:
   chroma
