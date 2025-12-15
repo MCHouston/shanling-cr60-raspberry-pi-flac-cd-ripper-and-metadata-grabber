@@ -123,6 +123,9 @@ sudo systemctl enable cr60_rip.timer
 #### 5d) Check timer status
 
 ```bash
+# View log output from the cr60_rip.service service
+sudo journalctl -u cr60_rip.service -f
+# Check the status of the cr60_rip.timer
 systemctl status cr60_rip.timer
 systemctl list-timers | grep cr60_rip
 ```
