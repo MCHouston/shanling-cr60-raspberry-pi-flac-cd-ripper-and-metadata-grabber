@@ -28,3 +28,6 @@ Save as something like:
 Make executable:
 
 chmod +x /usr/local/bin/cr60_rip.sh
+
+
+** Add to this, to describe the partition setup for the data directory **

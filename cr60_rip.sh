@@ -72,12 +72,23 @@ echo "Ripping to temporary directory: ${WORKDIR}"
 for wav in "${WAV_FILES[@]}"; do
   base=$(basename "${wav}")
   out="${WORKDIR}/${base%.*}.flac"
-
+  
   # Use flac library to handle conversion. Use max compression, and verify output.
-  flac --best \
-       --verify \
-       --preserve-modtime \
-       -o "${out}" "${wav}"
+  # If verification issue or another failure, write a logfile to the working directory.
+  if ! flac --best --verify --preserve-modtime -o "${out}" "${wav}"; then
+    LOGFILE="${WORKDIR}/flac_error.log"
+    {
+        echo "FLAC verification failed"
+        echo "Input WAV: ${wav}"
+        echo "Output FLAC: ${out}"
+        echo "Timestamp: $(date -Iseconds)"
+    } >> "${LOGFILE}"
+
+    echo "FLAC verification failed for ${wav}. Logged to ${LOGFILE}"
+
+    # Shutdown if failure occurs
+    sudo shutdown -h now
+  fi
 done
 
 ### 6) Tagging + artwork via MusicBrainz Picard ###
