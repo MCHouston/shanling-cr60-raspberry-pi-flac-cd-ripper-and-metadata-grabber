@@ -92,15 +92,8 @@ for wav in "${WAV_FILES[@]}"; do
 done
 
 ### 6) Tagging + artwork via MusicBrainz Picard ###
-echo "Tagging files via MusicBrainz Beets..."
-
+echo "Tagging files and pulling artwork via MusicBrainz Beets..."
 beet import -q -A "${WORKDIR}"
-
-# picard \
-#   --no-browser \
-#   --auto-save \
-#   --quiet \
-#   "${WORKDIR}"
 
 ### 7) Determine artist & album ###
 ARTIST=$(metaflac --show-tag=ARTIST "${WORKDIR}"/*.flac | head -n1 | cut -d= -f2-)
