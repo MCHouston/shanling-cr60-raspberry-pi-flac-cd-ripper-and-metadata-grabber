@@ -116,6 +116,8 @@ WantedBy=timers.target
 sudo systemctl daemon-reload
 sudo systemctl enable --now cr60_rip.timer
 sudo systemctl start cr60_rip.timer
+# Optionally, enable timer on boot, so that it automatically starts at boot up
+sudo systemctl enable cr60_rip.timer
 ```
 
 #### 5d) Check timer status
