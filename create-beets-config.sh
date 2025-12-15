@@ -46,10 +46,6 @@ embedart:
 
 scrub:
   auto: yes
-
-match:
-  strong_rec_thresh: 0.10
-  medium_rec_thresh: 0.25
 EOF
 
 chmod 600 "${BEETS_CFG}"
