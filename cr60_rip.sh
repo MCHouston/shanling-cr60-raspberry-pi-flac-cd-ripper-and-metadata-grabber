@@ -91,57 +91,29 @@ for wav in "${WAV_FILES[@]}"; do
   fi
 done
 
-### 6) Tagging + artwork via MusicBrainz Picard ###
+### 6) Tagging + artwork via MusicBrainz Picard. Also moves the files into /artist/album folder ###
 echo "Tagging files and pulling artwork via MusicBrainz Beets. Log error and shutdown on failure."
 beet import "${WORKDIR}"
 
-# Sanitize names (replace problematic characters)
-sanitize() { 
-  echo "$1" | tr '/:?"<>|*\\`' '-' | tr -d '\n\t' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sed 's/-\+/-/g'
-}
+### 7) Cleanup temporary directory
+# Delete the temp workdir if it still exists but contains no FLAC files (all were successfully renamed and moved)
+if [[ -d "${WORKDIR}" ]]; then
+    # Use nullglob to ensure the array is empty if no FLACs exist
+    shopt -s nullglob
+    flacs=("${WORKDIR}"/*.flac)
+    shopt -u nullglob
 
-### 7) Rename each FLAC track using the TITLE tag ###
-FLAC_FILES=($(ls -1 "${WORKDIR}"/*.flac | sort))
-counter=1
-for f in "${FLAC_FILES[@]}"; do
-  TITLE=$(metaflac --show-tag=TITLE "$f" | cut -d= -f2-)
-  TITLE=$(sanitize "${TITLE:-Unknown Track}")
-
-  # Use loop counter as track number
-  TRACKNUM=$(printf "%02d" "$counter")
-  NEWNAME="${TRACKNUM} - ${TITLE}.flac"
-
-  mv "$f" "${WORKDIR}/${NEWNAME}"
-  
-  ((counter++))
-done
-
-### 8) Determine artist & album ###
-ARTIST=$(metaflac --show-tag=ARTIST "${WORKDIR}"/*.flac | head -n1 | cut -d= -f2-)
-ALBUM=$(metaflac --show-tag=ALBUM "${WORKDIR}"/*.flac | head -n1 | cut -d= -f2-)
-
-ARTIST=$(sanitize "${ARTIST:-Unknown Artist}")
-ALBUM=$(sanitize "${ALBUM:-Unknown Album}")
-
-FINAL_DIR="${MUSIC_ROOT}/${ARTIST} - ${ALBUM}"
-
-### 9) Rename directory from temp to final, handle name collisions
-if [[ -d "${FINAL_DIR}" ]]; then
-  i=1
-  while [[ -d "${FINAL_DIR} (copy ${i})" ]]; do
-    ((i++))
-  done
-  FINAL_DIR="${FINAL_DIR} (copy ${i})"
+    if [[ ${#flacs[@]} -eq 0 ]]; then
+        echo "No FLACs remain in ${WORKDIR}, deleting temporary workdir..."
+        rm -rf "${WORKDIR}"
+        sync
+    fi
 fi
 
-mv "${WORKDIR}" "${FINAL_DIR}"
-
-echo "Done!"
-echo "Final directory: ${FINAL_DIR}"
-
 ### Cleanup ###
+echo "Done!"
 sync
 
 # TODO: Later, add this:
-#sudo shutdown -h now
+sudo shutdown -h now
 # END TODO
