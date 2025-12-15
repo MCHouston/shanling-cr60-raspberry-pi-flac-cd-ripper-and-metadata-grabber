@@ -9,7 +9,17 @@ MUSIC_ROOT="${DATA_MOUNT}/Music"
 BEETS_DIR="${HOME}/.config/beets"
 BEETS_CFG="${BEETS_DIR}/config.yaml"
 
-### 0) Ensure Beets configuration exists ###
+### 0) Check for AUDIO-labeled device ###
+echo "Checking for CR60 (label=${CR60_LABEL})..."
+CR60_DEV=$(lsblk -rpno NAME,LABEL,TYPE | awk '$2=="'"${CR60_LABEL}"'" && $3=="part" {print $1; exit}')
+
+if [[ -z "${CR60_DEV}" ]]; then
+    echo "No device with label '${CR60_LABEL}' found. Exiting."
+    exit 0
+fi
+echo "Found CR60 device at ${CR60_DEV}"
+
+### 1) Ensure Beets configuration exists ###
 if [[ ! -f "${BEETS_CFG}" ]]; then
     echo "Creating Beets configuration at ${BEETS_CFG}..."
     mkdir -p "${BEETS_DIR}"
@@ -50,16 +60,6 @@ EOF
 else
     echo "Beets config already exists at ${BEETS_CFG}"
 fi
-
-### 1) Check for AUDIO-labeled device ###
-echo "Checking for CR60 (label=${CR60_LABEL})..."
-CR60_DEV=$(lsblk -rpno NAME,LABEL,TYPE | awk '$2=="'"${CR60_LABEL}"'" && $3=="part" {print $1; exit}')
-
-if [[ -z "${CR60_DEV}" ]]; then
-    echo "No device with label '${CR60_LABEL}' found. Exiting."
-    exit 0
-fi
-echo "Found CR60 device at ${CR60_DEV}"
 
 ### 2) Wait for MusicBrainz connectivity ###
 MB_URL="https://musicbrainz.org/ws/2/release/?query=barcode:0000000000000&limit=1"
