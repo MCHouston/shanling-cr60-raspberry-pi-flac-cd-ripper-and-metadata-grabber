@@ -75,7 +75,7 @@ for wav in "${WAV_FILES[@]}"; do
   
   # Use flac library to handle conversion. Use max compression, and verify output.
   # If verification issue or another failure, write a logfile to the working directory.
-  if ! flac --best --verify --preserve-modtime -o "${out}" "${wav}"; then
+  if ! flac --silent --best --verify --preserve-modtime -o "${out}" "${wav}"; then
     LOGFILE="${WORKDIR}/flac_error.log"
     {
         echo "FLAC verification failed"
@@ -92,24 +92,46 @@ for wav in "${WAV_FILES[@]}"; do
 done
 
 ### 6) Tagging + artwork via MusicBrainz Picard ###
-echo "Tagging files and pulling artwork via MusicBrainz Beets..."
-beet import -q -A "${WORKDIR}"
+echo "Tagging files and pulling artwork via MusicBrainz Beets. Log error and shutdown on failure."
+if ! beet import -q -A "${WORKDIR}"; then
+  # Only now write a log file if there was an actual error
+  beet import -q -A "${WORKDIR}" &> "${WORKDIR}/beets-error.log"
+  echo "Beets import failed! See ${WORKDIR}/beets-error.log for details."
+  # Shutdown if failure occurs
+  sudo shutdown -h now
+fi
 
-### 7) Determine artist & album ###
+# Sanitize names (replace problematic characters)
+sanitize() { 
+  echo "$1" | tr '/:?"<>|*\\`' '-' | tr -d '\n\t' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sed 's/-\+/-/g'
+}
+
+### 7) Rename each FLAC track using the TITLE tag ###
+FLAC_FILES=($(ls -1 "${WORKDIR}"/*.flac | sort))
+counter=1
+for f in "${FLAC_FILES[@]}"; do
+  TITLE=$(metaflac --show-tag=TITLE "$f" | cut -d= -f2-)
+  TITLE=$(sanitize "${TITLE:-Unknown Track}")
+
+  # Use loop counter as track number
+  TRACKNUM=$(printf "%02d" "$counter")
+  NEWNAME="${TRACKNUM} - ${TITLE}.flac"
+
+  mv "$f" "${WORKDIR}/${NEWNAME}"
+  
+  ((counter++))
+done
+
+### 8) Determine artist & album ###
 ARTIST=$(metaflac --show-tag=ARTIST "${WORKDIR}"/*.flac | head -n1 | cut -d= -f2-)
 ALBUM=$(metaflac --show-tag=ALBUM "${WORKDIR}"/*.flac | head -n1 | cut -d= -f2-)
-
-# Sanitize names
-sanitize() {
-  echo "$1" | tr '/:' '-' | tr -d '\n'
-}
 
 ARTIST=$(sanitize "${ARTIST:-Unknown Artist}")
 ALBUM=$(sanitize "${ALBUM:-Unknown Album}")
 
-FINAL_DIR="${MUSIC_ROOT}/${ARTIST}-${ALBUM}"
+FINAL_DIR="${MUSIC_ROOT}/${ARTIST} - ${ALBUM}"
 
-### 8) Handle name collisions ###
+### 9) Rename directory from temp to final, handle name collisions
 if [[ -d "${FINAL_DIR}" ]]; then
   i=1
   while [[ -d "${FINAL_DIR} (copy ${i})" ]]; do
@@ -126,8 +148,6 @@ echo "Final directory: ${FINAL_DIR}"
 ### Cleanup ###
 sync
 
-# TODO: Replace the following with a fill shutdown command
-sudo umount "${CR60_MOUNT}"
-# Later, replace this with:
+# TODO: Later, add this:
 #sudo shutdown -h now
 # END TODO
