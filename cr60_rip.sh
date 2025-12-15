@@ -100,7 +100,7 @@ echo "Tagging files via MusicBrainz Picard..."
 #   --quiet \
 #   "${WORKDIR}"
 
-/opt/picard-tools/bin/picard-tools \
+/opt/picard-cli/bin/picard \
   --no-browser \
   --auto-save \
   --quiet \

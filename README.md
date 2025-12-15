@@ -10,15 +10,21 @@ sudo apt install -y \
   curl \
   uuid-runtime \
   flac \
+  libchromaprint1 \
+  libchromaprint-tools \
+  gettext \
+  git \
   python3 \
   python3-pip \
   python3-venv \
   python3-mutagen \
   python3-requests
+  
+
 
 
   
-
+  // OLD, DELETE!!:
 
   musicbrainz-picard \ # using python version instead
 
@@ -29,14 +35,15 @@ sudo apt install -y \
 ## Python virtual environment setup for picard
 
 ### Create virtual environment for Picard Tools
-sudo python3 -m venv /opt/picard-tools
+sudo python3 -m venv /opt/picard-cli
 
 ### Activate venv
-source /opt/picard-tools/bin/activate
+source /opt/picard-cli/bin/activate
 
 ### Install AcoustID + Picard Tools (headless Picard)
-pip install pyacoustid
-pip install picard-tools
+git clone https://github.com/metabrainz/picard.git /opt/picard-src
+pip install /opt/picard-src --no-deps
+pip install mutagen requests pyacoustid PyYAML
 
 ### Exit venv
 deactivate
