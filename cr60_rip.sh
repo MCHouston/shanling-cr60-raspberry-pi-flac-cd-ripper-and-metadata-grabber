@@ -93,16 +93,7 @@ done
 
 ### 6) Tagging + artwork via MusicBrainz Picard ###
 echo "Tagging files and pulling artwork via MusicBrainz Beets. Log error and shutdown on failure."
-if ! beet import -q "${WORKDIR}" || ! beet update "${WORKDIR}"; then
-    # Log both commands if they fail
-    {
-        beet import -q "${WORKDIR}" 2>&1
-        beet update "${WORKDIR}" 2>&1
-    } &> "${WORKDIR}/beets-error.log"
-
-    echo "Beets import/update failed! See ${WORKDIR}/beets-error.log for details."
-    sudo shutdown -h now
-fi
+beet import "${WORKDIR}"
 
 # Sanitize names (replace problematic characters)
 sanitize() { 

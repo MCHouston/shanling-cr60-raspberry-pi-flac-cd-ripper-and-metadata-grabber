@@ -22,14 +22,14 @@ directory: /mnt/data/Music
 library: ~/.config/beets/library.db
 
 import:
-  move: no
+  move: yes
   write: yes
   copy: no
   autotag: yes
   timid: no
   resume: no
   quiet: yes
-  log: ~/.config/beets/beets.log
+  from_scratch: yes
 
 plugins:
   chroma
