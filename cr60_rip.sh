@@ -9,6 +9,22 @@ MUSIC_ROOT="${DATA_MOUNT}/Music"
 BEETS_DIR="${HOME}/.config/beets"
 BEETS_CFG="${BEETS_DIR}/config.yaml"
 
+### Helper: safely eject CR60 ###
+eject_cr60() {
+    echo "Syncing filesystem..."
+    sync
+
+    # Umount the CR60
+    if mountpoint -q "${CR60_MOUNT}"; then
+        echo "Unmounting ${CR60_MOUNT}..."
+        sudo umount "${CR60_MOUNT}"
+    fi
+
+    # Eject the CD
+    sudo eject "${CR60_DEV}"
+    echo "CR60 safely ejected."
+}
+
 ### 0) Check for AUDIO-labeled device ###
 echo "Checking for CR60 (label=${CR60_LABEL})..."
 CR60_DEV=$(lsblk -rpno NAME,LABEL,TYPE | awk '$2=="'"${CR60_LABEL}"'" && $3=="part" {print $1; exit}')
@@ -82,13 +98,12 @@ if ! mountpoint -q "${CR60_MOUNT}"; then
 fi
 
 ### 4) Check for WAV files ###
-# Ensure .wav files are discovered regardless of file type casing
 shopt -s nullglob nocaseglob
-
-# Get list of WAV files
 WAV_FILES=("${CR60_MOUNT}"/*.wav)
+
 if [[ ${#WAV_FILES[@]} -eq 0 ]]; then
-    echo "No WAV files found on CR60. Exiting."
+    echo "No WAV files found on CR60."
+    eject_cr60
     exit 0
 fi
 
@@ -103,6 +118,8 @@ for wav in "${WAV_FILES[@]}"; do
     base=$(basename "${wav}")
     out="${WORKDIR}/${base%.*}.flac"
 
+    echo "Ripping ${wav} to FLAC..."
+
     if ! flac --silent --best --verify --preserve-modtime -o "${out}" "${wav}"; then
         LOGFILE="${WORKDIR}/flac_error.log"
         {
@@ -112,8 +129,11 @@ for wav in "${WAV_FILES[@]}"; do
             echo "Timestamp: $(date -Iseconds)"
         } >> "${LOGFILE}"
         echo "FLAC verification failed for ${wav}. Logged to ${LOGFILE}"
-        sudo shutdown -h now
+        eject_cr60
+        exit 1
     fi
+
+    echo "Successfully ripped ${wav} to ${out}."
 done
 
 ### 6) Tagging + artwork via Beets ###
@@ -132,6 +152,5 @@ fi
 
 ### Done ###
 shopt -u nullglob
-echo "Done! Initiating shutdown"
-sync
-sudo shutdown -h now
+echo "Done! Ejecting CR60..."
+eject_cr60
