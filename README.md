@@ -69,7 +69,7 @@ Key settings:
 ### 4) Data Partition Setup
 
 Mount the data partition as `/mnt/data`.
-- Ensure that it has been added to the linux fstab, so that the mount persists on system reboots.
+- Ensure that it has been added to the Linux fstab, so that the mount persists on system reboots.
 - Ensure root has write permissions on `/mnt/data` (script runs as root).
 
 ---
@@ -103,7 +103,7 @@ User=root
 
 Create `/etc/udev/rules.d/99-cr60.rules`:
 
-```ini
+```udev
 SUBSYSTEM=="block", KERNEL=="sd[a-z]", ACTION=="add", TAG+="systemd", \
   ENV{SYSTEMD_WANTS}="cr60_rip.service"
 ```
@@ -146,13 +146,13 @@ Because udev can emit multiple events, the rip script uses a lock file
 - Insert an audio CD
 - The udev rule will detect when a new drive appears (CR60) and trigger the cr60_rip.service
 - The script will:
-  1. Detect the CD in the CR60 disk tray (CR60 must be in rip mode, connected via it's USB-B port to the raspberry pi)
+  1. Detect the CD in the CR60 disk tray (CR60 must be in rip mode, connected via its USB-B port to the Raspberry Pi)
   2. Rip WAVs off of the CD to lossless FLAC in a temporary directory
   3. Tag files and fetch artwork
   4. Move tagged FLACs to `/mnt/data/Music`
   5. Delete the temporary directory (if it still exists)
   6. Eject the CR60 disk tray
-  7. Shut down the raspberry pi once the disk tray is closed with no CD in it, or begin ripping the next CD if a new disk is loaded
+  7. Shut down the Raspberry Pi once the disk tray is closed with no CD in it, or begin ripping the next CD if a new disk is loaded
 
 ---
 
@@ -160,4 +160,4 @@ Because udev can emit multiple events, the rip script uses a lock file
 
 - Ensure `/mnt/data` has sufficient free space for FLAC files.
 - The Pi will shutdown automatically after processing.
-- To override quiet mode or change Beets settings, edit `~/.config/beets
+- To override quiet mode or change Beets settings, edit `~/.config/beets/config.yaml`.
