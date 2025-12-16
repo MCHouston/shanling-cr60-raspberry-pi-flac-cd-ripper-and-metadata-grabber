@@ -9,7 +9,52 @@ MUSIC_ROOT="${DATA_MOUNT}/Music"
 BEETS_DIR="${HOME}/.config/beets"
 BEETS_CFG="${BEETS_DIR}/config.yaml"
 
-### 0) Check for AUDIO-labeled device ###
+### Helper: safely eject CR60 ###
+eject_cr60() {
+    echo "Syncing filesystem..."
+    sync
+
+    # Umount the CR60
+    if mountpoint -q "${CR60_MOUNT}"; then
+        echo "Unmounting ${CR60_MOUNT}..."
+        sudo umount "${CR60_MOUNT}"
+    fi
+
+    # Eject the CD
+    sudo eject "${CR60_DEV}"
+    echo "CR60 safely ejected."
+}
+
+### Helper: shutdown if empty disk detected ###
+shutdown_if_empty_disk() {
+    # Find a real disk with no partitions and not swap
+    EMPTY_DISK=$(lsblk -rpno NAME,TYPE,FSTYPE | awk '
+        $2=="disk" && $3!="swap" {
+            disk=$1
+            has_partitions=0
+            cmd="lsblk -rpno NAME " disk
+            while ((cmd | getline) > 0) {
+                if ($1 != disk) has_partitions=1
+            }
+            close(cmd)
+            if (!has_partitions) {
+                print disk
+                exit
+            }
+        }
+    ')
+
+    if [[ -n "${EMPTY_DISK}" ]]; then
+        echo "Detected closed and empty CR60 disk tray (${EMPTY_DISK} exists with no partitions)."
+        echo "Shutting down system..."
+        sudo shutdown -h now
+    fi
+}
+
+### 1) If the CR60 disk tray is closed and empty, perform system shutdown ###
+shutdown_if_empty_disk
+
+### 2) Check for AUDIO-labeled device ###
 echo "Checking for CR60 (label=${CR60_LABEL})..."
 CR60_DEV=$(lsblk -rpno NAME,LABEL,TYPE | awk '$2=="'"${CR60_LABEL}"'" && $3=="part" {print $1; exit}')
 
@@ -19,7 +64,7 @@ if [[ -z "${CR60_DEV}" ]]; then
 fi
 echo "Found CR60 device at ${CR60_DEV}"
 
-### 1) Ensure Beets configuration exists ###
+### 3) Ensure Beets configuration exists ###
 if [[ ! -f "${BEETS_CFG}" ]]; then
     echo "Creating Beets configuration at ${BEETS_CFG}..."
     mkdir -p "${BEETS_DIR}"
@@ -67,7 +112,7 @@ else
     echo "Beets config already exists at ${BEETS_CFG}"
 fi
 
-### 2) Wait for MusicBrainz connectivity ###
+### 4) Wait for MusicBrainz connectivity ###
 MB_URL="https://musicbrainz.org/ws/2/release/?query=barcode:0000000000000&limit=1"
 echo "Waiting for MusicBrainz metadata service..."
 until curl -fs --max-time 5 "${MB_URL}" >/dev/null 2>&1; do
@@ -75,20 +120,19 @@ until curl -fs --max-time 5 "${MB_URL}" >/dev/null 2>&1; do
 done
 echo "MusicBrainz reachable."
 
-### 3) Mount CR60 (non-persistent) ###
+### 5) Mount CR60 (non-persistent) ###
 sudo mkdir -p "${CR60_MOUNT}"
 if ! mountpoint -q "${CR60_MOUNT}"; then
     sudo mount "${CR60_DEV}" "${CR60_MOUNT}"
 fi
 
-### 4) Check for WAV files ###
-# Ensure .wav files are discovered regardless of file type casing
+### 6) Check for WAV files ###
 shopt -s nullglob nocaseglob
-
-# Get list of WAV files
 WAV_FILES=("${CR60_MOUNT}"/*.wav)
+
 if [[ ${#WAV_FILES[@]} -eq 0 ]]; then
-    echo "No WAV files found on CR60. Exiting."
+    echo "No WAV files found on CR60."
+    eject_cr60
     exit 0
 fi
 
@@ -98,10 +142,12 @@ WORKDIR="${MUSIC_ROOT}/${GUID}"
 mkdir -p "${WORKDIR}"
 echo "Ripping to temporary directory: ${WORKDIR}"
 
-### 5) Convert WAV -> FLAC ###
+### 7) Convert WAV -> FLAC ###
 for wav in "${WAV_FILES[@]}"; do
     base=$(basename "${wav}")
     out="${WORKDIR}/${base%.*}.flac"
+
+    echo "Ripping ${wav} to FLAC..."
 
     if ! flac --silent --best --verify --preserve-modtime -o "${out}" "${wav}"; then
         LOGFILE="${WORKDIR}/flac_error.log"
@@ -112,15 +158,18 @@ for wav in "${WAV_FILES[@]}"; do
             echo "Timestamp: $(date -Iseconds)"
         } >> "${LOGFILE}"
         echo "FLAC verification failed for ${wav}. Logged to ${LOGFILE}"
-        sudo shutdown -h now
+        eject_cr60
+        exit 1
     fi
+
+    echo "Successfully ripped ${wav} to ${out}."
 done
 
-### 6) Tagging + artwork via Beets ###
+### 8) Tagging + artwork via Beets ###
 echo "Tagging files, adding art, and moving into library..."
 beet import "${WORKDIR}"
 
-### 7) Cleanup temporary directory ###
+### 9) Cleanup temporary directory ###
 if [[ -d "${WORKDIR}" ]]; then
     flacs=("${WORKDIR}"/*.flac)
     if [[ ${#flacs[@]} -eq 0 ]]; then
@@ -132,6 +181,5 @@ fi
 
 ### Done ###
 shopt -u nullglob
-echo "Done! Initiating shutdown"
-sync
-sudo shutdown -h now
+echo "Done! Ejecting CR60..."
+eject_cr60
