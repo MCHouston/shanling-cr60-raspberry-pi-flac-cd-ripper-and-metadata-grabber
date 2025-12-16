@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+### Concurrency lock (prevent multiple udev-triggered runs) ###
+LOCKFILE="/run/cr60_rip.lock"
+
+exec 9>"${LOCKFILE}" || exit 0
+if ! flock -n 9; then
+    echo "Another CR60 rip is already running. Exiting."
+    exit 0
+fi
+
 ### CONFIG ###
 CR60_LABEL="AUDIO"
 CR60_MOUNT="/mnt/cr60"
@@ -51,20 +60,7 @@ shutdown_if_empty_disk() {
     fi
 }
 
-### 1) If the CR60 disk tray is closed and empty, perform system shutdown ###
-shutdown_if_empty_disk
-
-### 2) Check for AUDIO-labeled device ###
-echo "Checking for CR60 (label=${CR60_LABEL})..."
-CR60_DEV=$(lsblk -rpno NAME,LABEL,TYPE | awk '$2=="'"${CR60_LABEL}"'" && $3=="part" {print $1; exit}')
-
-if [[ -z "${CR60_DEV}" ]]; then
-    echo "No device with label '${CR60_LABEL}' found. Exiting."
-    exit 0
-fi
-echo "Found CR60 device at ${CR60_DEV}"
-
-### 3) Ensure Beets configuration exists ###
+### 1) Ensure Beets configuration exists ###
 if [[ ! -f "${BEETS_CFG}" ]]; then
     echo "Creating Beets configuration at ${BEETS_CFG}..."
     mkdir -p "${BEETS_DIR}"
@@ -112,13 +108,26 @@ else
     echo "Beets config already exists at ${BEETS_CFG}"
 fi
 
-### 4) Wait for MusicBrainz connectivity ###
+### 2) Wait for MusicBrainz connectivity ###
 MB_URL="https://musicbrainz.org/ws/2/release/?query=barcode:0000000000000&limit=1"
 echo "Waiting for MusicBrainz metadata service..."
 until curl -fs --max-time 5 "${MB_URL}" >/dev/null 2>&1; do
     sleep 3
 done
 echo "MusicBrainz reachable."
+
+### 3) If the CR60 disk tray is closed and empty, perform system shutdown ###
+shutdown_if_empty_disk
+
+### 4) Check for AUDIO-labeled device ###
+echo "Checking for CR60 (label=${CR60_LABEL})..."
+CR60_DEV=$(lsblk -rpno NAME,LABEL,TYPE | awk '$2=="'"${CR60_LABEL}"'" && $3=="part" {print $1; exit}')
+
+if [[ -z "${CR60_DEV}" ]]; then
+    echo "No device with label '${CR60_LABEL}' found. Exiting."
+    exit 0
+fi
+echo "Found CR60 device at ${CR60_DEV}"
 
 ### 5) Mount CR60 (non-persistent) ###
 sudo mkdir -p "${CR60_MOUNT}"
