@@ -89,7 +89,7 @@ shopt -s nullglob nocaseglob
 WAV_FILES=("${CR60_MOUNT}"/*.wav)
 if [[ ${#WAV_FILES[@]} -eq 0 ]]; then
     echo "No WAV files found on CR60. Exiting."
-    sudo shutdown -h now
+    exit 0
 fi
 
 ### Generate GUID ###
