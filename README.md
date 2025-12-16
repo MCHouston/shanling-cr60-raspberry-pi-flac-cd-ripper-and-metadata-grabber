@@ -138,12 +138,13 @@ systemctl list-timers | grep cr60_rip
 - Insert an audio CD
 - The systemd timer will detect the device and run the script automatically
 - The script will:
-  1. Detect the device
-  2. Convert WAVs to FLAC in a temporary directory
+  1. Detect the CD in the CR60 disk tray (CR60 must be in rip mode, connected via it's USB-B port to the raspberry pi)
+  2. Rip WAVs off of the CD to lossless FLAC in a temporary directory
   3. Tag files and fetch artwork
   4. Move tagged FLACs to `/mnt/data/Music`
-  5. Delete the temporary directory
-  6. Shutdown the Raspberry Pi after processing
+  5. Delete the temporary directory (if it still exists)
+  6. Eject the CR60 disk tray
+  7. Shut down the raspberry pi once the disk tray is closed with no CD in it, or begin ripping the next CD if a new disk is loaded
 
 ---
 
