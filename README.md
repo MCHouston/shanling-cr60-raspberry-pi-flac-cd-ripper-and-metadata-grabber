@@ -74,18 +74,24 @@ Mount the data partition as `/mnt/data`.
 
 ---
 
-### 5) Systemd Service & Timer Setup
+### 5) Systemd Service & udev Event-Driven Setup
 
-This setup runs the ripper automatically every minute. If the CR60 is not connected, nothing happens. When the CR60 is connected, the script runs.
+This setup runs the ripper automatically when the Shanling CR60 CD device
+appears (for example, when a CD is inserted or the device powers on).
 
-#### 5a) Service
+This approach is event-driven, running
+only when the hardware appears.
+
+---
+
+#### 5a) Systemd Service
 
 Create `/etc/systemd/system/cr60_rip.service`:
 
 ```ini
 [Unit]
 Description=Shanling CR60 FLAC Ripper Service
-After=network.target
+After=local-fs.target
 
 [Service]
 Type=oneshot
@@ -93,42 +99,44 @@ ExecStart=/opt/cr60_rip/cr60_rip.sh
 User=root
 ```
 
-#### 5b) Timer
+#### 5b) udev Rule
 
-Create `/etc/systemd/system/cr60_rip.timer`:
+Create `/etc/udev/rules.d/99-cr60.rules`:
 
 ```ini
-[Unit]
-Description=Run Shanling CR60 FLAC Ripper every minute
-
-[Timer]
-OnBootSec=1min
-OnUnitActiveSec=1min
-Unit=cr60_rip.service
-
-[Install]
-WantedBy=timers.target
+SUBSYSTEM=="block", KERNEL=="sd[a-z]", ACTION=="add", TAG+="systemd", \
+  ENV{SYSTEMD_WANTS}="cr60_rip.service"
 ```
 
-#### 5c) Enable and start the timer
+This rule tells udev:
+
+- Watch for block devices (`SUBSYSTEM=="block"`)
+- Match the top-level USB storage device exposed by the CR60 (`sd[a-z]`)
+- When the device appears (`ACTION=="add"`)
+- Tag the device for systemd handling (`TAG+="systemd"`)
+- Ask systemd to start `cr60_rip.service`
+
+#### 5c) Reload udev and systemd
 
 ```bash
+sudo udevadm control --reload-rules
+sudo udevadm trigger
 sudo systemctl daemon-reload
-sudo systemctl enable --now cr60_rip.timer
-sudo systemctl start cr60_rip.timer
-# Optionally, enable timer on boot, so that it automatically starts at boot up
-sudo systemctl enable cr60_rip.timer
 ```
 
-#### 5d) Check timer status
+#### 5d) Monitoring & Debugging
 
 ```bash
-# View log output from the cr60_rip.service service
+# View log output from the cr60_rip.service service:
 sudo journalctl -u cr60_rip.service -f
-# Check the status of the cr60_rip.timer
-systemctl status cr60_rip.timer
-systemctl list-timers | grep cr60_rip
+# Watch udev events in real time:
+sudo udevadm monitor --subsystem-match=block
 ```
+
+##### Concurrency Safety
+
+Because udev can emit multiple events, the rip script uses a lock file
+(e.g. `flock`) to guarantee only one rip runs at a time.
 
 ---
 
@@ -136,7 +144,7 @@ systemctl list-timers | grep cr60_rip
 
 - Connect the Shanling CR60 via USB
 - Insert an audio CD
-- The systemd timer will detect the device and run the script automatically
+- The udev rule will detect when a new drive appears (CR60) and trigger the cr60_rip.service
 - The script will:
   1. Detect the CD in the CR60 disk tray (CR60 must be in rip mode, connected via it's USB-B port to the raspberry pi)
   2. Rip WAVs off of the CD to lossless FLAC in a temporary directory
