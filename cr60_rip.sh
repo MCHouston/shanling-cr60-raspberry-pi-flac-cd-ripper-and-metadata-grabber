@@ -182,7 +182,9 @@ for wav in "${WAV_FILES[@]}"; do
 
     echo "Ripping ${wav} to FLAC..."
 
-    if ! flac --silent --best --verify --preserve-modtime -o "${out}" "${wav}"; then
+    if ! flac --silent --best --verify --preserve-modtime -o "${out}" "${wav}" 2>/dev/null; then
+        echo "FLAC encoding failed for: $wav" >&2
+
         LOGFILE="${WORKDIR}/flac_error.log"
         {
             echo "FLAC verification failed"
@@ -190,7 +192,7 @@ for wav in "${WAV_FILES[@]}"; do
             echo "Output FLAC: ${out}"
             echo "Timestamp: $(date -Iseconds)"
         } >> "${LOGFILE}"
-        echo "FLAC verification failed for ${wav}. Logged to ${LOGFILE}"
+
         eject_cr60
         exit 1
     fi
@@ -200,7 +202,7 @@ done
 
 ### 8) Tagging + artwork via Beets ###
 echo "Tagging files, adding art, and moving into library..."
-beet -v import "${WORKDIR}"
+beet import "${WORKDIR}"
 
 ### 9) Cleanup temporary directory ###
 if [[ -d "${WORKDIR}" ]]; then
