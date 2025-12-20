@@ -113,6 +113,7 @@ import:
   quiet: yes
   from_scratch: yes
   default_action: apply
+  duplicate_action: merge
 
 plugins:
   chroma
