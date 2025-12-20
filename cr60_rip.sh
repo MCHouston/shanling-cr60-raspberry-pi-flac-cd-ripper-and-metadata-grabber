@@ -18,20 +18,46 @@ MUSIC_ROOT="${DATA_MOUNT}/Music"
 BEETS_DIR="${HOME}/.config/beets"
 BEETS_CFG="${BEETS_DIR}/config.yaml"
 
+### Helper: wait for MusicBrainz with timeout, exit if cannot connect within 2 minutes ###
+wait_for_musicbrainz() {
+    local mb_url="https://musicbrainz.org/ws/2/release/?query=barcode:0000000000000&limit=1"
+    local timeout=120   # seconds
+    local interval=3    # seconds
+    local elapsed=0
+
+    echo "Waiting for MusicBrainz metadata service (timeout: ${timeout}s)..."
+
+    while ! curl -fs --max-time 5 "${mb_url}" >/dev/null 2>&1; do
+        sleep "${interval}"
+        elapsed=$((elapsed + interval))
+
+        if (( elapsed >= timeout )); then
+            echo "MusicBrainz could not be reached, shutting down."
+            sudo shutdown -h now
+            return 1
+        fi
+    done
+
+    echo "MusicBrainz reachable."
+    return 0
+}
+
 ### Helper: safely eject CR60 ###
 eject_cr60() {
     echo "Syncing filesystem..."
     sync
 
-    # Umount the CR60
     if mountpoint -q "${CR60_MOUNT}"; then
         echo "Unmounting ${CR60_MOUNT}..."
         sudo umount "${CR60_MOUNT}"
     fi
 
-    # Eject the CD
-    sudo eject "${CR60_DEV}"
-    echo "CR60 safely ejected."
+    if [[ -n "${CR60_DEV:-}" ]]; then
+        sudo eject "${CR60_DEV}"
+        echo "CR60 safely ejected."
+    else
+        echo "CR60 device not set, skipping eject."
+    fi
 }
 
 ### Helper: shutdown if empty disk detected ###
@@ -111,13 +137,8 @@ else
     echo "Beets config already exists at ${BEETS_CFG}"
 fi
 
-### 2) Wait for MusicBrainz connectivity ###
-MB_URL="https://musicbrainz.org/ws/2/release/?query=barcode:0000000000000&limit=1"
-echo "Waiting for MusicBrainz metadata service..."
-until curl -fs --max-time 5 "${MB_URL}" >/dev/null 2>&1; do
-    sleep 3
-done
-echo "MusicBrainz reachable."
+### 2) Wait for MusicBrainz connectivity, exit if cannot connect ###
+wait_for_musicbrainz || exit 1
 
 ### 3) If the CR60 disk tray is closed and empty, perform system shutdown ###
 shutdown_if_empty_disk
