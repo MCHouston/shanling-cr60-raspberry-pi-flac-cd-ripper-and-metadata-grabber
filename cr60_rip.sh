@@ -70,8 +70,8 @@ directory: /mnt/data/Music
 library: ~/.config/beets/library.db
 
 match:
-  strong_rec_thresh: 0.80
-  medium_rec_thresh: 0.80
+  strong_rec_thresh: 0.90
+  medium_rec_thresh: 0.90
   rec_gap_thresh: 0.0
   max_rec:
     missing_tracks: strong
